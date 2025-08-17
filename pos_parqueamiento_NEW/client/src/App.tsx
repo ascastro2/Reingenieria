@@ -2,8 +2,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { SnackbarProvider } from 'notistack';
 
 // Componentes
 import Layout from './components/Layout/Layout';
@@ -68,16 +66,6 @@ const theme = createTheme({
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         },
       },
-    },
-  },
-});
-
-// Cliente de React Query
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
     },
   },
 });
@@ -147,22 +135,12 @@ const AppContent: React.FC = () => {
 // Componente raíz de la aplicación
 const App: React.FC = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <SnackbarProvider
-          maxSnack={3}
-          anchorOrigin={{
-            vertical: 'top',
-            horizontal: 'right',
-          }}
-        >
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
-        </SnackbarProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 

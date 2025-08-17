@@ -1,23 +1,6 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Card,
-  CardContent,
-  TextField,
-  Button,
-  Typography,
-  Alert,
-  IconButton,
-  InputAdornment,
-  Paper,
-  Container
-} from '@mui/material';
-import {
-  Visibility,
-  VisibilityOff,
-  Login as LoginIcon,
-  Business as BusinessIcon
-} from '@mui/icons-material';
+import { Box, Card, CardContent, TextField, Button, Typography, Alert, IconButton, InputAdornment, Paper, Container } from '@mui/material';
+import { Visibility, VisibilityOff, Login as LoginIcon, Business as BusinessIcon } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -25,9 +8,9 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
+  const [error, setError] = useState<string | null>(null);
+  
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -35,21 +18,18 @@ const Login: React.FC = () => {
     e.preventDefault();
     
     if (!email || !password) {
-      setError('Por favor complete todos los campos');
+      setError('Por favor completa todos los campos');
       return;
     }
 
     try {
       setLoading(true);
-      setError('');
+      setError(null);
       
-      const success = await login(email, password);
-      
-      if (success) {
-        navigate('/');
-      }
+      await login(email, password);
+      navigate('/');
     } catch (error: any) {
-      setError(error.message || 'Error al iniciar sesión');
+      setError(error.message || 'Error en el inicio de sesión');
     } finally {
       setLoading(false);
     }
@@ -60,147 +40,115 @@ const Login: React.FC = () => {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 2
-      }}
-    >
-      <Container maxWidth="sm">
+    <Container component="main" maxWidth="sm">
+      <Box
+        sx={{
+          marginTop: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
         <Paper
-          elevation={24}
+          elevation={3}
           sx={{
-            borderRadius: 4,
-            overflow: 'hidden',
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(10px)'
+            padding: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            width: '100%',
           }}
         >
-          {/* Header */}
-          <Box
-            sx={{
-              background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
-              color: 'white',
-              padding: 4,
-              textAlign: 'center'
-            }}
-          >
-            <BusinessIcon sx={{ fontSize: 60, mb: 2 }} />
-            <Typography variant="h4" component="h1" gutterBottom>
-              POS Parqueamiento
+          {/* Logo y Título */}
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
+            <BusinessIcon sx={{ fontSize: 60, color: '#1976d2', mb: 2 }} />
+            <Typography component="h1" variant="h4" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
+              🚗 POS Parqueamiento
             </Typography>
-            <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
-              Sistema de Gestión de Estacionamiento
+            <Typography variant="body1" color="text.secondary">
+              Sistema de Gestión de Parqueamiento
             </Typography>
           </Box>
 
-          {/* Formulario */}
-          <CardContent sx={{ padding: 4 }}>
-            <Typography variant="h5" component="h2" gutterBottom textAlign="center" sx={{ mb: 4 }}>
-              Iniciar Sesión
-            </Typography>
-
+          {/* Formulario de Login */}
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
             {error && (
-              <Alert severity="error" sx={{ mb: 3 }}>
+              <Alert severity="error" sx={{ mb: 2 }}>
                 {error}
               </Alert>
             )}
 
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-              <TextField
-                fullWidth
-                label="Correo Electrónico"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                margin="normal"
-                required
-                autoComplete="email"
-                autoFocus
-                sx={{ mb: 2 }}
-                InputProps={{
-                  sx: { borderRadius: 2 }
-                }}
-              />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="email"
+              label="Correo Electrónico"
+              name="email"
+              autoComplete="email"
+              autoFocus
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              sx={{ mb: 2 }}
+            />
 
-              <TextField
-                fullWidth
-                label="Contraseña"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                margin="normal"
-                required
-                autoComplete="current-password"
-                sx={{ mb: 3 }}
-                InputProps={{
-                  sx: { borderRadius: 2 },
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={handleTogglePassword}
-                        edge="end"
-                        size="small"
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
-              />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Contraseña"
+              type={showPassword ? 'text' : 'password'}
+              id="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={handleTogglePassword}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ mb: 3 }}
+            />
 
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                size="large"
-                disabled={loading}
-                startIcon={<LoginIcon />}
-                sx={{
-                  mt: 2,
-                  mb: 2,
-                  py: 1.5,
-                  borderRadius: 2,
-                  fontSize: '1.1rem',
-                  fontWeight: 600,
-                  background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 8px 25px rgba(25, 118, 210, 0.3)'
-                  },
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                {loading ? 'Iniciando Sesión...' : 'Iniciar Sesión'}
-              </Button>
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              disabled={loading}
+              startIcon={loading ? null : <LoginIcon />}
+              sx={{
+                mt: 1,
+                mb: 2,
+                py: 1.5,
+                fontSize: '1.1rem',
+                fontWeight: 600,
+              }}
+            >
+              {loading ? 'Iniciando Sesión...' : 'Iniciar Sesión'}
+            </Button>
 
-              <Typography variant="body2" textAlign="center" sx={{ mt: 2, opacity: 0.7 }}>
-                Credenciales por defecto: admin@parqueamiento.com / admin123
+            {/* Información adicional */}
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Credenciales de prueba:
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                admin@parqueamiento.com / admin123
               </Typography>
             </Box>
-          </CardContent>
-
-          {/* Footer */}
-          <Box
-            sx={{
-              background: '#f5f5f5',
-              padding: 2,
-              textAlign: 'center',
-              borderTop: '1px solid #e0e0e0'
-            }}
-          >
-            <Typography variant="caption" color="text.secondary">
-              © 2024 Sistema POS Parqueamiento - Versión Web Moderna
-            </Typography>
           </Box>
         </Paper>
-      </Container>
-    </Box>
+      </Box>
+    </Container>
   );
 };
 

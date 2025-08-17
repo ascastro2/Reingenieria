@@ -1,20 +1,49 @@
 {
-  "name": "pos-parqueamiento-web",
+  "name": "pos-parqueamiento",
   "version": "1.0.0",
-  "description": "Sistema de Punto de Venta para Parqueamiento - Versión Web Moderna",
+  "description": "Sistema POS Parqueamiento - Versión Web Moderna",
   "main": "server/index.js",
   "scripts": {
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "cd server && npm run dev",
     "client": "cd client && npm start",
     "build": "cd client && npm run build",
-    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
-    "start": "cd server && npm start"
+    "start": "cd server && npm start",
+    "test": "npm run test:server && npm run test:client",
+    "test:server": "cd server && npm test",
+    "test:client": "cd client && npm test",
+    "lint": "npm run lint:server && npm run lint:client",
+    "lint:server": "cd server && npm run lint",
+    "lint:client": "cd client && npm run lint",
+    "lint:fix": "npm run lint:fix:server && npm run lint:fix:client",
+    "lint:fix:server": "cd server && npm run lint:fix",
+    "lint:fix:client": "cd client && npm run lint:fix"
   },
-  "keywords": ["pos", "parqueamiento", "react", "nodejs", "mysql"],
-  "author": "Reingeniería Team",
+  "keywords": [
+    "pos",
+    "parqueamiento",
+    "estacionamiento",
+    "react",
+    "nodejs",
+    "mysql",
+    "typescript"
+  ],
+  "author": "Equipo de Reingeniería",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
-  }
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tu-usuario/pos-parqueamiento.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tu-usuario/pos-parqueamiento/issues"
+  },
+  "homepage": "https://github.com/tu-usuario/pos-parqueamiento#readme"
 }
