@@ -16,6 +16,14 @@ const dbConfig = {
   reconnect: true
 };
 
+// Log de configuración para debugging
+console.log('🔧 Configuración de base de datos:');
+console.log('Host:', dbConfig.host);
+console.log('Port:', dbConfig.port);
+console.log('User:', dbConfig.user);
+console.log('Database:', dbConfig.database);
+console.log('Password:', dbConfig.password ? '***' : '(vacía)');
+
 // Crear pool de conexiones
 const pool = mysql.createPool(dbConfig);
 

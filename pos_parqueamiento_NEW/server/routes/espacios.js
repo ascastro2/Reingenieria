@@ -1,12 +1,12 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { executeQuery } = require('../config/database');
-const { authenticateToken, requireRole } = require('./auth');
+const { conditionalAuth } = require('./auth');
 
 const router = express.Router();
 
-// Aplicar middleware de autenticación a todas las rutas
-router.use(authenticateToken);
+// Aplicar middleware de autenticación condicional a todas las rutas
+router.use(conditionalAuth);
 
 // GET /api/espacios - Obtener todos los espacios
 router.get('/', async (req, res) => {
@@ -53,22 +53,16 @@ router.get('/ocupados', async (req, res) => {
         e.numero_espacio,
         e.tipo_vehiculo,
         e.tarifa_hora,
-        est.id_estacionamiento,
-        est.fecha_entrada,
-        v.placa,
-        v.marca,
-        v.modelo,
-        v.color,
-        c.nombre,
-        c.apellido,
-        c.telefono,
-        TIMESTAMPDIFF(MINUTE, est.fecha_entrada, NOW()) as minutos_estacionado,
-        ROUND((TIMESTAMPDIFF(MINUTE, est.fecha_entrada, NOW()) / 60) * e.tarifa_hora, 2) as monto_actual
+        v.placa_vehiculo,
+        v.hora_entrada,
+        TIMESTAMPDIFF(MINUTE, v.hora_entrada, NOW()) as minutos_estacionado,
+        ROUND((TIMESTAMPDIFF(MINUTE, v.hora_entrada, NOW()) / 60) * e.tarifa_hora, 2) as monto_actual,
+        c.Nombre_Cliente,
+        c.Apellido_Cliente
       FROM espacios e
-      JOIN estacionamientos est ON e.id_espacio = est.id_espacio
-      JOIN vehiculos v ON est.id_vehiculo = v.id_vehiculo
-      LEFT JOIN clientes c ON est.id_cliente = c.id_cliente
-      WHERE est.estado = 'activo'
+      JOIN ventas v ON e.id_espacio = v.id_espacio
+      LEFT JOIN clientes c ON v.id_cliente = c.idCliente
+      WHERE v.estado = 'activa'
       ORDER BY e.numero_espacio
     `);
 
@@ -109,7 +103,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/espacios - Crear nuevo espacio (solo admin)
-router.post('/', requireRole(['admin']), [
+router.post('/', [
   body('numero_espacio').trim().isLength({ min: 1, max: 10 }),
   body('tipo_vehiculo').isIn(['auto', 'camioneta', 'camion', 'moto']),
   body('tarifa_hora').isFloat({ min: 0.01 })
@@ -170,7 +164,7 @@ router.post('/', requireRole(['admin']), [
 });
 
 // PUT /api/espacios/:id - Actualizar espacio (solo admin)
-router.put('/:id', requireRole(['admin']), [
+router.put('/:id', [
   body('numero_espacio').trim().isLength({ min: 1, max: 10 }),
   body('tipo_vehiculo').isIn(['auto', 'camioneta', 'camion', 'moto']),
   body('tarifa_hora').isFloat({ min: 0.01 }),
@@ -247,7 +241,7 @@ router.put('/:id', requireRole(['admin']), [
 });
 
 // DELETE /api/espacios/:id - Eliminar espacio (solo admin)
-router.delete('/:id', requireRole(['admin']), async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -262,12 +256,12 @@ router.delete('/:id', requireRole(['admin']), async (req, res) => {
     }
 
     // Verificar si el espacio está ocupado
-    const [estacionamientoActivo] = await executeQuery(
-      'SELECT id_estacionamiento FROM estacionamientos WHERE id_espacio = ? AND estado = "activo"',
+    const [ventaActiva] = await executeQuery(
+      'SELECT id_venta FROM ventas WHERE id_espacio = ? AND estado = "activa"',
       [id]
     );
 
-    if (estacionamientoActivo) {
+    if (ventaActiva) {
       return res.status(400).json({ 
         error: 'No se puede eliminar un espacio que está ocupado' 
       });
@@ -304,7 +298,7 @@ router.delete('/:id', requireRole(['admin']), async (req, res) => {
 });
 
 // POST /api/espacios/:id/estado - Cambiar estado del espacio
-router.post('/:id/estado', requireRole(['admin', 'vendedor']), [
+router.post('/:id/estado', [
   body('estado').isIn(['libre', 'ocupado', 'reservado', 'mantenimiento'])
 ], async (req, res) => {
   try {
@@ -328,14 +322,14 @@ router.post('/:id/estado', requireRole(['admin', 'vendedor']), [
 
     // Verificar si se puede cambiar el estado
     if (estado === 'libre' && espacio.estado === 'ocupado') {
-      const [estacionamientoActivo] = await executeQuery(
-        'SELECT id_estacionamiento FROM estacionamientos WHERE id_espacio = ? AND estado = "activo"',
+      const [ventaActiva] = await executeQuery(
+        'SELECT id_venta FROM ventas WHERE id_espacio = ? AND estado = "activa"',
         [id]
       );
 
-      if (estacionamientoActivo) {
+      if (ventaActiva) {
         return res.status(400).json({ 
-          error: 'No se puede liberar un espacio que tiene un estacionamiento activo' 
+          error: 'No se puede liberar un espacio que tiene una venta activa' 
         });
       }
     }
@@ -379,7 +373,7 @@ router.get('/estadisticas/overview', async (req, res) => {
         COUNT(*) as total_espacios,
         SUM(CASE WHEN estado = 'libre' THEN 1 ELSE 0 END) as espacios_libres,
         SUM(CASE WHEN estado = 'ocupado' THEN 1 ELSE 0 END) as espacios_ocupados,
-        SUM(CASE WHEN estado = 'reservado' THEN 1 ELSE 0 END) as espacios_reservados,
+
         SUM(CASE WHEN estado = 'mantenimiento' THEN 1 ELSE 0 END) as espacios_mantenimiento,
         ROUND(AVG(tarifa_hora), 2) as tarifa_promedio
       FROM espacios

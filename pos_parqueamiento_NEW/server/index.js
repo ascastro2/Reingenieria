@@ -1,13 +1,28 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+// const rateLimit = require('express-rate-limit'); // DESHABILITADO
 const morgan = require('morgan');
-require('dotenv').config();
+// Cargar variables de entorno
+require('dotenv').config({ path: './config.env' });
+
+// Log de configuración para debugging
+console.log('🔧 Configuración del servidor:');
+console.log('Puerto:', process.env.PORT);
+console.log('Entorno:', process.env.NODE_ENV);
+console.log('DB Host:', process.env.DB_HOST);
+console.log('DB Name:', process.env.DB_NAME);
+console.log('DB User:', process.env.DB_USER);
+console.log('DB Port:', process.env.DB_PORT);
 
 // Importar rutas
 const authRoutes = require('./routes/auth');
 const espaciosRoutes = require('./routes/espacios');
+const clientesRoutes = require('./routes/clientes');
+const ventasRoutes = require('./routes/ventas');
+const cajaRoutes = require('./routes/caja');
+const usuariosRoutes = require('./routes/usuarios');
+const configuracionRoutes = require('./routes/configuracion');
 
 // Importar configuración de base de datos
 const { testConnection } = require('./config/database');
@@ -18,21 +33,28 @@ const PORT = process.env.PORT || 5000;
 // Middleware de seguridad
 app.use(helmet());
 
-// Configuración de CORS
+// Configuración de CORS - Sin restricciones
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true
+  origin: true, // Permitir cualquier origen
+  credentials: true, // Deshabilitar credentials para permitir todos los orígenes
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
+  allowedHeaders: ['*'], // Permitir todos los headers
+  exposedHeaders: ['*'], // Exponer todos los headers
+  
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutos
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // máximo 100 requests por ventana
-  message: {
-    error: 'Demasiadas solicitudes desde esta IP, intenta de nuevo más tarde.'
-  }
-});
-app.use('/api/', limiter);
+// Middleware adicional para CORS preflight
+//app.options('*', cors());
+
+// Rate limiting - DESHABILITADO para desarrollo
+// const limiter = rateLimit({
+//   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutos
+//   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // máximo 100 requests por ventana
+//   message: {
+//     error: 'Demasiadas solicitudes desde esta IP, intenta de nuevo más tarde.'
+//   }
+// });
+// app.use('/api/', limiter);
 
 // Middleware de logging
 if (process.env.NODE_ENV === 'development') {
@@ -54,6 +76,11 @@ app.use((req, res, next) => {
 // Rutas de la API
 app.use('/api/auth', authRoutes.router);
 app.use('/api/espacios', espaciosRoutes);
+app.use('/api/clientes', clientesRoutes);
+app.use('/api/ventas', ventasRoutes);
+app.use('/api/caja', cajaRoutes);
+app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/configuracion', configuracionRoutes);
 
 // Ruta de prueba
 app.get('/api/health', (req, res) => {

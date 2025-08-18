@@ -37,6 +37,7 @@ import {
   Visibility
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
+import axios from 'axios';
 
 interface Espacio {
   id_espacio: number;
@@ -51,6 +52,7 @@ interface EspacioForm {
   numero_espacio: string;
   tipo_vehiculo: 'auto' | 'camioneta' | 'camion' | 'moto';
   tarifa_hora: number;
+  estado: 'libre' | 'ocupado' | 'reservado' | 'mantenimiento';
 }
 
 const Espacios: React.FC = () => {
@@ -63,51 +65,22 @@ const Espacios: React.FC = () => {
   const [formData, setFormData] = useState<EspacioForm>({
     numero_espacio: '',
     tipo_vehiculo: 'auto',
-    tarifa_hora: 0
+    tarifa_hora: 0,
+    estado: 'libre'
   });
-
-  // Datos de ejemplo para desarrollo
-  const espaciosEjemplo: Espacio[] = [
-    {
-      id_espacio: 1,
-      numero_espacio: 'A1',
-      tipo_vehiculo: 'auto',
-      tarifa_hora: 5.00,
-      estado: 'libre',
-      fecha_creacion: '2024-01-01'
-    },
-    {
-      id_espacio: 2,
-      numero_espacio: 'A2',
-      tipo_vehiculo: 'auto',
-      tarifa_hora: 5.00,
-      estado: 'ocupado',
-      fecha_creacion: '2024-01-01'
-    },
-    {
-      id_espacio: 3,
-      numero_espacio: 'B1',
-      tipo_vehiculo: 'camioneta',
-      tarifa_hora: 7.50,
-      estado: 'libre',
-      fecha_creacion: '2024-01-01'
-    }
-  ];
 
   const fetchEspacios = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Simular llamada a API
-      setTimeout(() => {
-        setEspacios(espaciosEjemplo);
-        setLoading(false);
-      }, 1000);
+      const response = await axios.get('/api/espacios');
+      setEspacios(response.data.data);
       
     } catch (error: any) {
       console.error('Error al cargar espacios:', error);
       setError('Error al cargar los espacios');
+    } finally {
       setLoading(false);
     }
   };
@@ -122,14 +95,16 @@ const Espacios: React.FC = () => {
       setFormData({
         numero_espacio: espacio.numero_espacio,
         tipo_vehiculo: espacio.tipo_vehiculo,
-        tarifa_hora: espacio.tarifa_hora
+        tarifa_hora: espacio.tarifa_hora,
+        estado: espacio.estado
       });
     } else {
       setEditingEspacio(null);
       setFormData({
         numero_espacio: '',
         tipo_vehiculo: 'auto',
-        tarifa_hora: 0
+        tarifa_hora: 0,
+        estado: 'libre'
       });
     }
     setOpenDialog(true);
@@ -141,44 +116,35 @@ const Espacios: React.FC = () => {
     setFormData({
       numero_espacio: '',
       tipo_vehiculo: 'auto',
-      tarifa_hora: 0
+      tarifa_hora: 0,
+      estado: 'libre'
     });
   };
 
   const handleSubmit = async () => {
     try {
       if (editingEspacio) {
-        // Simular actualización
-        setEspacios(prev => prev.map(esp => 
-          esp.id_espacio === editingEspacio.id_espacio 
-            ? { ...esp, ...formData }
-            : esp
-        ));
+        await axios.put(`/api/espacios/${editingEspacio.id_espacio}`, formData);
       } else {
-        // Simular creación
-        const nuevoEspacio: Espacio = {
-          id_espacio: Date.now(),
-          ...formData,
-          estado: 'libre',
-          fecha_creacion: new Date().toISOString().split('T')[0]
-        };
-        setEspacios(prev => [...prev, nuevoEspacio]);
+        await axios.post('/api/espacios', formData);
       }
       
+      fetchEspacios();
       handleCloseDialog();
     } catch (error: any) {
       console.error('Error al guardar espacio:', error);
-      setError('Error al guardar el espacio');
+      setError(error.response?.data?.error || 'Error al guardar el espacio');
     }
   };
 
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este espacio?')) {
       try {
-        setEspacios(prev => prev.filter(esp => esp.id_espacio !== id));
+        await axios.delete(`/api/espacios/${id}`);
+        fetchEspacios();
       } catch (error: any) {
         console.error('Error al eliminar espacio:', error);
-        setError('Error al eliminar el espacio');
+        setError(error.response?.data?.error || 'Error al eliminar el espacio');
       }
     }
   };
@@ -296,10 +262,10 @@ const Espacios: React.FC = () => {
           <Card>
             <CardContent sx={{ textAlign: 'center' }}>
               <Typography variant="h4" color="warning.main">
-                {espacios.filter(e => e.estado === 'reservado').length}
+                {espacios.filter(e => e.estado === 'mantenimiento').length}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Espacios Reservados
+                En Mantenimiento
               </Typography>
             </CardContent>
           </Card>
@@ -360,7 +326,7 @@ const Espacios: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">
-                          S/ {espacio.tarifa_hora.toFixed(2)}
+                          S/ {typeof espacio.tarifa_hora === 'number' ? espacio.tarifa_hora.toFixed(2) : '0.00'}
                         </Typography>
                       </TableCell>
                       <TableCell>
@@ -457,6 +423,20 @@ const Espacios: React.FC = () => {
               required
               inputProps={{ min: 0, step: 0.01 }}
             />
+            
+            <FormControl fullWidth margin="normal" required>
+              <InputLabel>Estado</InputLabel>
+              <Select
+                value={formData.estado}
+                label="Estado"
+                onChange={(e) => setFormData({ ...formData, estado: e.target.value as any })}
+              >
+                <MenuItem value="libre">Libre</MenuItem>
+                <MenuItem value="ocupado">Ocupado</MenuItem>
+                <MenuItem value="reservado">Reservado</MenuItem>
+                <MenuItem value="mantenimiento">Mantenimiento</MenuItem>
+              </Select>
+            </FormControl>
           </Box>
         </DialogContent>
         <DialogActions>

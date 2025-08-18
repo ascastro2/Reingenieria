@@ -45,10 +45,11 @@ interface EspacioOcupado {
   id_espacio: number;
   numero_espacio: string;
   tipo_vehiculo: string;
-  placa: string;
+  placa_vehiculo: string;
   minutos_estacionado: number;
   monto_actual: number;
-  nombre_cliente: string;
+  Nombre_Cliente?: string;
+  Apellido_Cliente?: string;
 }
 
 const Dashboard: React.FC = () => {
@@ -63,19 +64,36 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Simular estadísticas (en un sistema real vendrían de endpoints específicos)
-      const mockStats: DashboardStats = {
-        totalEspacios: 25,
-        espaciosLibres: 18,
-        espaciosOcupados: 7,
-        totalClientes: 45,
-        totalVentas: 128,
-        ingresosHoy: 1250.50,
-        ingresosMes: 28450.75
+      // Obtener estadísticas de espacios
+      const [espaciosResponse, clientesResponse, ventasResponse, ingresosResponse] = await Promise.all([
+        axios.get('/api/espacios/estadisticas/overview'),
+        axios.get('/api/clientes'),
+        axios.get('/api/ventas/estadisticas/overview'),
+        axios.get('/api/ventas/ingresos/hoy')
+      ]);
+
+      const espaciosStats = espaciosResponse.data.data;
+      const clientesData = clientesResponse.data.data;
+      const ventasStats = ventasResponse.data.data;
+      const ingresosHoy = ingresosResponse.data.data.total;
+
+      // Obtener espacios ocupados
+      const espaciosOcupadosResponse = await axios.get('/api/espacios/ocupados');
+      const espaciosOcupadosData = espaciosOcupadosResponse.data.data;
+
+      // Calcular estadísticas del dashboard
+      const dashboardStats: DashboardStats = {
+        totalEspacios: espaciosStats.total_espacios || 0,
+        espaciosLibres: espaciosStats.espacios_libres || 0,
+        espaciosOcupados: espaciosStats.espacios_ocupados || 0,
+        totalClientes: clientesData.length || 0,
+        totalVentas: ventasStats.total_ventas || 0,
+        ingresosHoy: ingresosHoy || 0,
+        ingresosMes: 0 // Se puede implementar después
       };
 
-      setStats(mockStats);
-      setEspaciosOcupados([]);
+      setStats(dashboardStats);
+      setEspaciosOcupados(espaciosOcupadosData);
     } catch (error: any) {
       console.error('Error al cargar datos del dashboard:', error);
       setError('Error al cargar los datos del dashboard');
@@ -301,12 +319,12 @@ const Dashboard: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" fontWeight={600}>
-                          {espacio.placa}
+                          {espacio.placa_vehiculo}
                         </Typography>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">
-                          {espacio.nombre_cliente || 'Sin cliente'}
+                          {espacio.Nombre_Cliente ? `${espacio.Nombre_Cliente} ${espacio.Apellido_Cliente || ''}` : 'Sin cliente'}
                         </Typography>
                       </TableCell>
                       <TableCell>

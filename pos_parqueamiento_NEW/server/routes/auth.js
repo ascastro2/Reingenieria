@@ -20,7 +20,7 @@ const authenticateToken = async (req, res, next) => {
     
     // Verificar que el usuario existe y está activo
     const [user] = await executeQuery(
-      'SELECT id_usuario, nombre_usuario, apellido_usuario, email, rol, estado FROM usuarios WHERE id_usuario = ? AND estado = "activo"',
+      'SELECT id_usuario, nombre, apellido, email, rol, estado FROM usuarios WHERE id_usuario = ? AND estado = "activo"',
       [decoded.userId]
     );
 
@@ -33,6 +33,42 @@ const authenticateToken = async (req, res, next) => {
   } catch (error) {
     return res.status(403).json({ error: 'Token inválido' });
   }
+};
+
+// Middleware de autenticación condicional para desarrollo
+const conditionalAuth = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  // En desarrollo, permitir acceso con token de desarrollo o sin autenticación
+  if (process.env.NODE_ENV === 'development') {
+    // Si hay token de desarrollo, simular usuario admin
+    if (token && token.startsWith('dev_token_')) {
+      req.user = {
+        id_usuario: 1,
+        nombre: 'Admin',
+        apellido: 'Sistema',
+        email: 'admin@parqueamiento.com',
+        rol: 'admin',
+        estado: 'activo'
+      };
+      return next();
+    }
+    
+    // Si no hay token, también permitir acceso (para desarrollo)
+    req.user = {
+      id_usuario: 1,
+      nombre: 'Admin',
+      apellido: 'Sistema',
+      email: 'admin@parqueamiento.com',
+      rol: 'admin',
+      estado: 'activo'
+    };
+    return next();
+  }
+  
+  // En producción, requerir autenticación
+  return authenticateToken(req, res, next);
 };
 
 // Middleware para verificar rol
@@ -104,8 +140,8 @@ router.post('/login', [
       token,
       user: {
         id: user.id_usuario,
-        nombre: user.nombre_usuario,
-        apellido: user.apellido_usuario,
+        nombre: user.nombre,
+        apellido: user.apellido,
         email: user.email,
         rol: user.rol
       }
@@ -118,7 +154,7 @@ router.post('/login', [
 });
 
 // POST /api/auth/register (solo admin)
-router.post('/register', authenticateToken, requireRole(['admin']), [
+router.post('/register', conditionalAuth, requireRole(['admin']), [
   body('nombre_usuario').trim().isLength({ min: 2, max: 50 }),
   body('apellido_usuario').trim().isLength({ min: 2, max: 50 }),
   body('email').isEmail().normalizeEmail(),
@@ -131,7 +167,7 @@ router.post('/register', authenticateToken, requireRole(['admin']), [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { nombre_usuario, apellido_usuario, email, password, rol } = req.body;
+    const { nombre, apellido, email, password, rol } = req.body;
 
     // Verificar si el email ya existe
     const [existingUser] = await executeQuery(
@@ -148,8 +184,8 @@ router.post('/register', authenticateToken, requireRole(['admin']), [
 
     // Crear usuario
     const result = await executeQuery(
-      'INSERT INTO usuarios (nombre_usuario, apellido_usuario, email, password, rol) VALUES (?, ?, ?, ?, ?)',
-      [nombre_usuario, apellido_usuario, email, hashedPassword, rol]
+      'INSERT INTO usuarios (nombre, apellido, email, password, rol) VALUES (?, ?, ?, ?, ?)',
+      [nombre, apellido, email, hashedPassword, rol]
     );
 
     // Registrar log de actividad
@@ -160,7 +196,7 @@ router.post('/register', authenticateToken, requireRole(['admin']), [
         'crear_usuario',
         'usuarios',
         result.insertId,
-        JSON.stringify({ nombre_usuario, apellido_usuario, email, rol }),
+        JSON.stringify({ nombre, apellido, email, rol }),
         req.ip
       ]
     );
@@ -178,7 +214,7 @@ router.post('/register', authenticateToken, requireRole(['admin']), [
 });
 
 // POST /api/auth/change-password
-router.post('/change-password', authenticateToken, [
+router.post('/change-password', conditionalAuth, [
   body('currentPassword').isLength({ min: 6 }),
   body('newPassword').isLength({ min: 6 })
 ], async (req, res) => {
@@ -230,12 +266,12 @@ router.post('/change-password', authenticateToken, [
 });
 
 // GET /api/auth/profile
-router.get('/profile', authenticateToken, async (req, res) => {
+router.get('/profile', conditionalAuth, async (req, res) => {
   try {
     const userId = req.user.id_usuario;
 
     const [user] = await executeQuery(
-      'SELECT id_usuario, nombre_usuario, apellido_usuario, email, rol, estado, fecha_creacion, ultimo_acceso FROM usuarios WHERE id_usuario = ?',
+      'SELECT id_usuario, nombre, apellido, email, rol, estado, fecha_creacion, ultimo_acceso FROM usuarios WHERE id_usuario = ?',
       [userId]
     );
 
@@ -255,7 +291,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
 });
 
 // POST /api/auth/logout
-router.post('/logout', authenticateToken, async (req, res) => {
+router.post('/logout', conditionalAuth, async (req, res) => {
   try {
     const userId = req.user.id_usuario;
 
@@ -276,17 +312,59 @@ router.post('/logout', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/auth/verify
-router.get('/verify', authenticateToken, (req, res) => {
-  res.json({
-    success: true,
-    message: 'Token válido',
-    user: req.user
-  });
+// GET /api/auth/verify - Verificar token JWT válido
+router.get('/verify', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Token de acceso requerido' 
+      });
+    }
+
+    // Verificar token JWT
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret');
+    
+    // Verificar que el usuario existe y está activo
+    const [user] = await executeQuery(
+      'SELECT id_usuario, nombre, apellido, email, rol, estado FROM usuarios WHERE id_usuario = ? AND estado = "activo"',
+      [decoded.userId]
+    );
+
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Usuario no válido o inactivo' 
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Token válido',
+      user: {
+        id: user.id_usuario,
+        nombre: user.nombre,
+        apellido: user.apellido,
+        email: user.email,
+        rol: user.rol
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al verificar token:', error);
+    res.status(401).json({ 
+      success: false, 
+      error: 'Token inválido' 
+    });
+  }
 });
 
 module.exports = {
   router,
   authenticateToken,
+  conditionalAuth,
   requireRole
 };

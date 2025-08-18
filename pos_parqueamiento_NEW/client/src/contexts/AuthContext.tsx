@@ -57,12 +57,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } else {
       setLoading(false);
     }
+
+    // Configurar interceptor para agregar token a todas las peticiones
+    const requestInterceptor = axios.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    // Limpiar interceptor al desmontar
+    return () => {
+      axios.interceptors.request.eject(requestInterceptor);
+    };
   }, []);
 
   const verifyToken = async () => {
     try {
       const response = await axios.get('/api/auth/verify');
-      setUser(response.data.user);
+      if (response.data.success) {
+        setUser(response.data.user);
+      } else {
+        throw new Error('Token inválido');
+      }
     } catch (error) {
       // Token inválido, limpiar localStorage
       localStorage.removeItem('token');
@@ -74,30 +97,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      // Para desarrollo, simular login exitoso
-      if (email === 'admin@parqueamiento.com' && password === 'admin123') {
-        // Simular token
-        const token = 'token_prueba_' + Date.now();
-        localStorage.setItem('token', token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        setUser(usuarioPrueba);
-        return;
-      }
-
-      // En producción, usar la API real
+      // Usar la API real para autenticación
       const response = await axios.post('/api/auth/login', { email, password });
-      const { token, user: userData } = response.data.data;
       
-      // Guardar token en localStorage
-      localStorage.setItem('token', token);
-      
-      // Configurar token en axios
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // Actualizar estado del usuario
-      setUser(userData);
+      if (response.data.success) {
+        const { token, user: userData } = response.data;
+        
+        // Guardar token en localStorage
+        localStorage.setItem('token', token);
+        
+        // Configurar token en axios
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        // Actualizar estado del usuario
+        setUser(userData);
+      } else {
+        throw new Error(response.data.error || 'Error en el inicio de sesión');
+      }
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Error en el inicio de sesión');
+      console.error('Error en login:', error);
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      } else if (error.message) {
+        throw new Error(error.message);
+      } else {
+        throw new Error('Error en el inicio de sesión');
+      }
     }
   };
 
