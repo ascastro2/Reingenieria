@@ -1,0 +1,25 @@
+Preguntas para completar el Desarrollo
+
+Sobre el sistema original (Java Swing):
+
+¿Qué módulos tenía exactamente? (ejemplo: clientes, ventas, productos, caja, reportes).
+
+¿Había algún control de usuarios o roles en la versión original?
+
+¿Cómo era la conexión a la base de datos: se usaba MySQL, SQLite u otro motor?
+
+Sobre el proceso de migración:
+
+¿El backend nuevo en Node.js replica la misma lógica del sistema original o se rediseñaron procesos?
+
+¿El frontend en React se desarrolló desde cero o se tomó como base la interfaz de Swing?
+
+¿Se mantuvo la misma base de datos pero optimizada, o se creó un esquema completamente nuevo?
+
+Sobre las mejoras aplicadas:
+
+Además de JWT y roles, ¿se añadieron características nuevas (ejemplo: reportes más detallados, panel administrativo, dashboards)?
+
+¿El sistema final se desplegó en algún servidor en la nube (ejemplo: AWS, Azure, Render) o solo local?
+
+¿Se incluyó integración con facturación electrónica o sistemas externos, o solo funciones internas?

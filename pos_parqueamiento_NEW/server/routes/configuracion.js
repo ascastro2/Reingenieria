@@ -23,10 +23,11 @@ router.get('/', async (req, res) => {
         tarifa_camioneta,
         tarifa_camion,
         iva_porcentaje,
-        estado
+        estado,
+        fecha_creacion,
+        fecha_actualizacion
       FROM configuracion 
-      ORDER BY id_config DESC
-      LIMIT 1
+      ORDER BY id_config ASC
     `);
 
     res.json({
@@ -236,11 +237,20 @@ router.get('/empresa/info', async (req, res) => {
   try {
     const empresa = await executeQuery(`
       SELECT 
+        id_config,
         nombre_empresa,
         ruc_empresa,
         direccion_empresa,
         telefono_empresa,
-        email_empresa
+        email_empresa,
+        tarifa_base,
+        tarifa_moto,
+        tarifa_camioneta,
+        tarifa_camion,
+        iva_porcentaje,
+        estado,
+        fecha_creacion,
+        fecha_actualizacion
       FROM configuracion 
       WHERE estado = 'activa'
       ORDER BY id_config DESC

@@ -155,8 +155,8 @@ router.post('/login', [
 
 // POST /api/auth/register (solo admin)
 router.post('/register', conditionalAuth, requireRole(['admin']), [
-  body('nombre_usuario').trim().isLength({ min: 2, max: 50 }),
-  body('apellido_usuario').trim().isLength({ min: 2, max: 50 }),
+  body('nombre').trim().isLength({ min: 2, max: 50 }),
+  body('apellido').trim().isLength({ min: 2, max: 50 }),
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6 }),
   body('rol').isIn(['admin', 'vendedor', 'cajero'])

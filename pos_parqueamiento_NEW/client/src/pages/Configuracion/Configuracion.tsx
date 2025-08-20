@@ -104,19 +104,26 @@ const Configuracion: React.FC = () => {
         axios.get('/api/configuracion/empresa/info')
       ]);
 
-      // Asegurar que configuraciones sea siempre un array
+      // Asegurar que configuraciones sea siempre un array y ordenar por ID
       const configData = configsResponse.data.data;
+      let configsArray = [];
+      
       if (Array.isArray(configData)) {
-        setConfiguraciones(configData);
+        configsArray = configData.sort((a, b) => a.id_config - b.id_config);
       } else if (configData && typeof configData === 'object') {
         // Si es un objeto individual, convertirlo en array
-        setConfiguraciones([configData]);
-      } else {
-        setConfiguraciones([]);
+        configsArray = [configData];
       }
       
+      setConfiguraciones(configsArray);
+      
+      // Establecer la configuración actual (la primera activa o la primera en la lista)
       if (configActualResponse.data.data) {
         setConfiguracionActual(configActualResponse.data.data);
+      } else if (configsArray.length > 0) {
+        // Si no hay configuración actual específica, usar la primera activa o la primera en la lista
+        const configActiva = configsArray.find(c => c.estado === 'activa');
+        setConfiguracionActual(configActiva || configsArray[0]);
       }
     } catch (error: any) {
       console.error('Error al cargar configuración:', error);
@@ -219,14 +226,33 @@ const Configuracion: React.FC = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-PE', {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return '$0.00';
+    }
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'PEN'
+      currency: 'USD'
     }).format(amount);
   };
 
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('es-PE');
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Fecha inválida';
+      }
+      return date.toLocaleString('es-EC', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Fecha inválida';
+    }
   };
 
   if (loading) {
@@ -300,7 +326,7 @@ const Configuracion: React.FC = () => {
                     <Card sx={{ bgcolor: 'white' }}>
                       <CardContent sx={{ textAlign: 'center', py: 2 }}>
                         <Typography variant="h6" color="success.main" fontWeight={600}>
-                          {formatCurrency(configuracionActual.tarifa_base)}
+                          {formatCurrency(configuracionActual.tarifa_base || 0)}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           Tarifa Base (Auto)
@@ -312,7 +338,7 @@ const Configuracion: React.FC = () => {
                     <Card sx={{ bgcolor: 'white' }}>
                       <CardContent sx={{ textAlign: 'center', py: 2 }}>
                         <Typography variant="h6" color="warning.main" fontWeight={600}>
-                          {configuracionActual.iva_porcentaje}%
+                          {configuracionActual.iva_porcentaje ? `${configuracionActual.iva_porcentaje}%` : '0%'}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           IVA
@@ -369,7 +395,7 @@ const Configuracion: React.FC = () => {
           <Card>
             <CardContent sx={{ textAlign: 'center' }}>
               <Typography variant="h4" color="warning.main">
-                {configuraciones.length > 0 ? formatDateTime(configuraciones[0].fecha_creacion) : 'N/A'}
+                {configuracionActual ? formatDateTime(configuracionActual.fecha_creacion) : 'N/A'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Última Actualización
